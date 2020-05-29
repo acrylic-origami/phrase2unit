@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+export FLASK_ENV="development"
+export FLASK_APP="solve.py"
+python -m flask run
