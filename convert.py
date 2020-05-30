@@ -42,7 +42,7 @@ if __name__ == '__main__':
 		def search(d):
 			if 'utype' in d and 'scale' in d:
 				# direct convert to SI -- base case
-				return [float(d['scale']), copy.deepcopy(U[d['utype']]), d['utype']]
+				return [float(d['scale']), copy.deepcopy(U[d['utype']]), d['utype'], d['_name1'] if '_name1' in d else d['name1'] if 'name1' in d else None, d['link'] if 'link' in d else 'utype']
 				
 			if 'target' in d:
 				# direct alias
@@ -78,19 +78,29 @@ if __name__ == '__main__':
 				
 				return per_num
 		
-		K = {}
+		K = []
 		for u, d in J.items():
 			try:
 				s = search(d)
 				if s != None:
 					u_ = re.sub(r'\W', '', u)
 					if u_ != '':
-						K[u_] = s + [u]
+						# [float(d['scale']), copy.deepcopy(U[d['utype']]), d['utype'], d['_name1'], d['link'] if 'link' in d else 'utype']
+						K.append({
+							"u_sym": u_,
+							"u_name": s[-2] or u_,
+							"u_link": s[-1],
+							"u_ut_name": s[-3],
+							"u_si": {
+								"si_fac": s[0],
+								"si_syms": s[1]
+							}
+						})
 			except KeyError as e:
 				sys.stderr.write('%s: %s @%d\n' % (u, repr(e), sys.exc_info()[-1].tb_lineno))
 		
 		# print(K)	
-		print(json.dumps(trieify(K)))
+		print(json.dumps(K))
 		
 	run()
 				
