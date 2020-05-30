@@ -42,7 +42,9 @@ if __name__ == '__main__':
 		def search(d):
 			if 'utype' in d and 'scale' in d:
 				# direct convert to SI -- base case
-				return [float(d['scale']), copy.deepcopy(U[d['utype']]), d['utype'], d['_name1'] if '_name1' in d else d['name1'] if 'name1' in d else None, d['link'] if 'link' in d else 'utype']
+				name = d['_name1'] if '_name1' in d else d['name1'] if 'name1' in d else None
+				link = d['link'] if 'link' in d else name if name != None else d['utype']
+				return [float(d['scale']), copy.deepcopy(U[d['utype']]), d['utype'], name, link]
 				
 			if 'target' in d:
 				# direct alias

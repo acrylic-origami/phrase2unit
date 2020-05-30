@@ -3,6 +3,7 @@ body, html {
 	width:100%;
 	height:100%;
 	background-color:white;
+	font-family:Merriweather, sans-serif;
 }
 nav > ul {
 	list-style-type:none;

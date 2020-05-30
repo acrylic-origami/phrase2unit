@@ -1,7 +1,7 @@
 .unit-container {
 	
 }
-.unit-list {
+.unit-list, #breakdown_selector,  {
 	display:inline-block;
 	list-style-type:none;
 	margin:0;
@@ -11,7 +11,7 @@
 		display:inline-block;
 	}
 
-#breakdown_container {
+#breakdown_container, .hit-tooltip ul {
 	list-style-type:none;
 	margin:0;
 	padding:0;
@@ -28,11 +28,8 @@
 		#breakdown_container .hit-term .hit-tooltip {
 			position:absolute;
 			width:9em;
-		}
-		.hit-tooltip ul {
-			list-style-type:none;
-			margin:0;
-			padding:0;
+			left:-4.5em;
+			top:1em;
 		}
 	.breakdown .missed-term {
 		

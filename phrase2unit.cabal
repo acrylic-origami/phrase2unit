@@ -19,7 +19,7 @@ extra-source-files:  CHANGELOG.md
 
 executable phrase2unit
   main-is:             Main.hs
-  -- other-modules:
+  other-modules:       P2U.Util
   -- other-extensions:
   build-depends:       base, containers, bytestring-trie, bytestring, aeson, text, happstack-server >= 7.6.0, iconv, utf8-string
   -- hs-source-dirs:
