@@ -187,7 +187,7 @@ export default class extends React.Component {
 													</a>
 													<span className="unit-abbr">&nbsp; (abbr. <span className="unit-abbr-prefix">{t.rpc_m_prefix ? t.rpc_m_prefix.p_sym : null}</span>{t.rpc_unit.u_sym})</span>
 												</li>
-												<li key="desc0" className="unit-desc">SI:&nbsp;<span className="unit-unitstr">{t.rpc_stash.si_fac.toExponential(2)}{this.pprunit(t.rpc_unit.u_si.si_syms)}</span></li>
+												<li key="desc0" className="unit-desc">SI:&nbsp;<span className="unit-unitstr">{t.rpc_unit.u_si.si_fac.toExponential(2)}{this.pprunit(t.rpc_unit.u_si.si_syms)}</span></li>
 												<li key="desc1" className="unit-desc">Phrase unit from here to end:&nbsp;<span className="unit-unitstr">{this.pprunit(t.rpc_stash.si_syms)}</span></li>
 											</ul>
 										</div>
