@@ -23,9 +23,11 @@ import Control.Arrow ( first, second, (&&&), (***) )
 import Data.Maybe ( fromMaybe, listToMaybe, isNothing )
 import GHC.Generics
 import System.Environment (getArgs)
+import System.IO ( hFlush, stdout )
 import Data.Aeson ( ToJSON(..), FromJSON(..), genericToEncoding, defaultOptions )
 import qualified Data.Aeson as Aeson ( encode, decode )
 import Codec.Text.IConv ( convertFuzzy, Fuzzy(..) )
+import Data.Time.Clock ( getCurrentTime )
 
 import Happstack.Server ( Response(..), ServerPart(..), Method(..), ToMessage(..), decodeBody, defaultBodyPolicy, dir, look, nullConf, simpleHTTP, method, toResponse, ok, badRequest )
 import qualified Happstack.Server as HS
@@ -170,7 +172,7 @@ solve ph = do
         $ M.toList $ mconcat
         $ take kS_ITER_LIM
         $ iterate (
-            (\x -> trace (show $ M.size x) x) . mconcat . map (
+            mconcat . map (
                 uncurry (flip M.map)
                 . (ks' *** (flip (:)))
               ) . M.toList
@@ -233,7 +235,7 @@ solve ph = do
                   ) (Nothing, []) (us' <> pus)
               -- (flip const (n, s, us, pus, us', s0)) $ 
               in resultn `lor` (dp (n + 1)) -- keep going even if it's empty
-      ph_ascii = map toLower $ C.unpack $ convertFuzzy Discard "UTF-8" "ASCII" (BLU.fromString ph)
+      ph_ascii = map toLower $ C.unpack $ convertFuzzy Transliterate "UTF-8" "ASCII" (BLU.fromString ph)
       (ph_alpha_only, ph_map) = unzip $ filter (uncurry (&&) . ((>= 'A') &&& (<= 'z')) . fst) (zip ph_ascii [0..])
       m_terms = proc (C.pack ph_alpha_only)
       finalize terms = R {
@@ -253,7 +255,10 @@ solve_ep = do
     if length ph > mAX_TERM_LEN
       then badRequest $ toResponse $ "Phrase too long (>" ++ (show mAX_TERM_LEN) ++ " characters)"
     else do
-      terms <- liftIO $ solve ph
+      terms <- liftIO $ do
+        getCurrentTime >>= (putStrLn . (++(" : " ++ ph)) . show)
+        hFlush stdout
+        solve ph
       ok $ toResponse terms
 
 main :: IO ()

@@ -34,6 +34,7 @@ section {
 	font-size:2.3em;
 	border-bottom:#444 solid 2px;
 	color:#222;
+	padding-right:50px;
 }
 /*#term_raw:focus {
 	border-bottom:#000 solid 2px;

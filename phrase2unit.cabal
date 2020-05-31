@@ -21,6 +21,6 @@ executable phrase2unit
   main-is:             Main.hs
   other-modules:       P2U.Util
   -- other-extensions:
-  build-depends:       base, containers, bytestring-trie, bytestring, aeson, text, happstack-server >= 7.6.0, iconv, utf8-string
+  build-depends:       base, containers, bytestring-trie, bytestring, aeson, text, happstack-server >= 7.6.0, iconv, utf8-string, time
   -- hs-source-dirs:
   default-language:    Haskell2010
