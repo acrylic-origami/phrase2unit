@@ -27,7 +27,7 @@ import Data.Aeson ( ToJSON(..), FromJSON(..), genericToEncoding, defaultOptions 
 import qualified Data.Aeson as Aeson ( encode, decode )
 import Codec.Text.IConv ( convertFuzzy, Fuzzy(..) )
 
-import Happstack.Server ( Response(..), ServerPart(..), Method(..), ToMessage(..), decodeBody, defaultBodyPolicy, dir, look, nullConf, simpleHTTP, method, toResponse, ok )
+import Happstack.Server ( Response(..), ServerPart(..), Method(..), ToMessage(..), decodeBody, defaultBodyPolicy, dir, look, nullConf, simpleHTTP, method, toResponse, ok, badRequest )
 import qualified Happstack.Server as HS
 
 import Debug.Trace ( trace )
@@ -155,7 +155,7 @@ solve :: String -> IO (Maybe Result)
 solve ph = do
   Just raw_units <- json_load "u2si.json"
   Just raw_pfs <- json_load "prefixes.json"
-  Just utypes <- json_load "utypes.json"
+  Just utypes <- json_load "lim_utypes.json"
   -- (Just _raw_units, (Just raw_pfs, Just utypes)) <- liftIO $
   --   liftA2 (,) (return Nothing) (liftA2 (,) (json_load "prefixes.json") (json_load "utypes.json"))
   let units :: Trie Unit
@@ -244,13 +244,17 @@ solve ph = do
             }) terms
         }
   return (finalize <$> m_terms)
-  
+
+mAX_TERM_LEN = 256
 solve_ep :: ServerPart Response
 solve_ep = do
     method POST
     ph <- look "term_raw"
-    terms <- liftIO $ solve ph
-    ok $ toResponse terms
+    if length ph > mAX_TERM_LEN
+      then badRequest $ toResponse $ "Phrase too long (>" ++ (show mAX_TERM_LEN) ++ " characters)"
+    else do
+      terms <- liftIO $ solve ph
+      ok $ toResponse terms
 
 main :: IO ()
 main = do
