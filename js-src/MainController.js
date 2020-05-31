@@ -1,11 +1,47 @@
 import React from 'react';
 import Q from 'q';
 
+const SUPERLATIVE_LIMS = [1E-9, 1E9];
+const superlatives = {
+	"area":["pretty big","pretty small"],
+	"cent":["pretty expensive","pretty cheap"],
+	"charge":["pretty charged","pretty neutral"],
+	"chemical amount":["a lot","not a lot"],
+	"density":["pretty dense","pretty Light"],
+	"energy":["pretty energetic","not very energetic"],
+	"energy per chemical amount":["pretty energy-packed", "not very energy-packed"],
+	"energy per unit length":["pretty energy-packed", "not very energy-packed"],
+	"energy per unit mass":["pretty energy-packed", "not very energy-packed"],
+	"energy per unit volume":["pretty energy-packed", "not very energy-packed"],
+	"exhaust emission":["pretty polluting","pretty green"],
+	"flow":["a gush","a trickle"],
+	"force":["pretty forceful","pretty acerbic"],
+	"fuel efficiency":["pretty great","pretty terrible"],
+	"length":["pretty long","pretty short"],
+	"linear density":["pretty dense","pretty light"],
+	"luminous intensity":["pretty bright","pretty dim"],
+	"magnetic field strength":["pretty strong","pretty weak"],
+	"mass":["pretty heavy","pretty light"],
+	"mass per unit power":["pretty weak","pretty strong"],
+	"mass per unit time":["a gush","a trickle"],
+	"molar rate":["a gush","a trickle"],
+	"power":["pretty powerful","pretty weak"],
+	"power per unit mass":["pretty powerful","pretty weak"],
+	"radioactivity":["pretty dangerous","nothing to worry about"],
+	"speed":["pretty fast","pretty slow"],
+	"temperature":["pretty hot","pretty cold"],
+	"time":["pretty long","pretty short"],
+	"torque":["pretty strong","pretty weak"],
+	"volume":["pretty big","pretty small"]
+}
+function sgn(x) { return x > 0 ? 1 : -1; }
+
 export default class extends React.Component {
 	constructor(props) {
 		super(props);
 		this.form_ref = React.createRef();
 		this.term_raw_ref = React.createRef();
+		this.uri_stash_ref = React.createRef();
 		this.state = {
 			result: null,
 			n_request: 0,
@@ -13,7 +49,8 @@ export default class extends React.Component {
 			breakdown_type: 'raw',
 			term_raw: '',
 			request: null,
-			err: null
+			err: null,
+			copying: false
 		};
 		window.addEventListener('popstate', this.handle_uri_term);
 	}
@@ -34,6 +71,8 @@ export default class extends React.Component {
 			this.setState(({ err }) => err !== null && (err[0] === this_err ? { err: [this_err, true] } : {}));
 			setTimeout(_ => this.setState(({ err }) => err !== null && (err[0] === this_err ? { err: null } : {})), 4000);
 		}
+		if(this.state.copying)
+			setTimeout(_ => this.setState({ copying: false }), 1000);
 		
 		if(l.n_request != this.state.n_request) {
 			const n_request_stash = this.state.n_request
@@ -73,6 +112,15 @@ export default class extends React.Component {
 		history.pushState({}, `search`, `?term_raw=${encodeURI(this.state.term_raw)}`);
 		this.setState(({ n_request }) => ({ n_request: n_request + 1 }));
 		e.preventDefault();
+	}
+	
+	copyURI = () => {
+		const past_focus = document.activeElement;
+		console.log(this.uri_stash_ref.current.value);
+		this.uri_stash_ref.current.select();
+		document.execCommand('copy');
+		past_focus.focus();
+		this.setState({ copying: true });
 	}
 	
 	pprunit = u => {
@@ -120,21 +168,37 @@ export default class extends React.Component {
 			{
 				this.state.result == null ? null : <section id="results">
 					<h2>This phrase is: <span>{this.state.result.terms[0].rpc_stash.si_fac.toExponential(4)}</span> {this.pprunit(this.state.result.terms[0].rpc_stash.si_syms)}</h2>
-					<div>
-						{this.state.result.nice == null || this.state.result.nice.length === 0
-							? null
-							: <span>
-								AKA a[n]:&nbsp;{ this.pprunit(this.state.result.nice.reduce((a, [b_sgn, b_ut]) => {
-										const k = b_ut.ut_name;
-										if(!a.hasOwnProperty(k))
-											a[k] = 0;
-										a[k] += b_sgn;
-										return a;
-									}, {}))
-								}
-							</span>
+					{this.state.result.nice == null || this.state.result.nice.length === 0
+						? null
+						: (() => {
+							const nice_unit = this.state.result.nice.reduce((a, [b_sgn, b_ut]) => {
+								const k = b_ut.ut_name;
+								if(!a.hasOwnProperty(k))
+									a[k] = 0;
+								a[k] += b_sgn;
+								return a;
+							}, {});
+							const nice_unit_arr = Object.entries(nice_unit);
+							return <div>
+								{ nice_unit_arr.length === 1
+										&& Math.abs(nice_unit_arr[0][1]) === 1
+										&& nice_unit_arr[0][0] in superlatives
+										&&
+											(this.state.result.terms[0].rpc_stash.si_fac > SUPERLATIVE_LIMS[1]
+											|| this.state.result.terms[0].rpc_stash.si_fac < SUPERLATIVE_LIMS[0])
+									? <div>That's&hellip; {superlatives[nice_unit_arr[0][0]][+(sgn(SUPERLATIVE_LIMS[0] - this.state.result.terms[0].rpc_stash.si_fac) === nice_unit_arr[0][1])]}.</div>
+									: null }
+								<div>(It's a unit of { this.pprunit(nice_unit) })</div>
+							</div>
+						})()
+					}
+					<span className="copy-container">
+						<input type="text" className="hidden" ref={this.uri_stash_ref} value={window.location.href} onChange={_ => {}} />
+						{ this.state.copying ?
+							"Copied!" :
+							<a href="#" onClick={this.copyURI}>Share this result (copy URI)</a>
 						}
-					</div>
+					</span>
 				</section>
 			}
 			{ this.state.result == null ? null :
@@ -203,7 +267,9 @@ export default class extends React.Component {
 									i++;
 								}
 							}
-							ret.push(missed_jsx(last_end, term_raw.length));
+							if(this.state.breakdown_type === 'raw')
+								ret.push(missed_jsx(last_end, term_raw.length));
+							
 							return ret;
 						})()
 					}</ul>
@@ -226,7 +292,7 @@ export default class extends React.Component {
 					Since the DP and knapsack solvers aren't optimal, the results aren't always strictly minimal, but they're usually pretty good and small.
 				</p>
 				<p>
-					Source is available <a href="//github.com/acrylic-origami/phrase2unit" target="_blank">on GitHub</a>. Further details on implementation can be found <a href="//lam.io/writing/p2u" target="_blank">on my blag.</a>
+					Source is available <a href="//github.com/acrylic-origami/phrase2unit" target="_blank">on GitHub</a>. Further details on implementation can be found <a href="//lam.io/projects/p2u" target="_blank">on my blag.</a>
 				</p>
 				<p><sup>&dagger; Just realized this sentence reads like this tool complies with a standard created by XKCD &mdash; one of more than 2000. <a href="https://xkcd.com/927/" target="_blank">Oh god.</a></sup></p>
 			</section>

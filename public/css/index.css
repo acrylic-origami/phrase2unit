@@ -48,6 +48,15 @@ section {
 	visibility:hidden;
 	z-index:-1;
 }
+.hidden {
+	width:1px;
+	height:1px;
+	position:absolute;
+	opacity:0.01;
+	left:-8192px;
+	top:-8192px;
+	z-index:-255;
+}
 
 h1, h2, h3, h4, h5, h6 {
 	font-family:Inconsolata, monospace;
@@ -86,6 +95,13 @@ ul.unit-list, #breakdown_selector {
 #results, #results_placeholder, #breakdown {
 	padding-left:2em;
 }
+	.copy-container {
+		display:inline-block;
+		margin:1em 0;
+		font-size:0.7em;
+		border:#EEE solid 1px;
+		padding:1em;
+	}
 #results_placeholder {
 	opacity:0.3;
 	margin-top:2em;
@@ -166,8 +182,9 @@ ul.unit-list, #breakdown_selector {
 		#breakdown_container .hit-term:hover .hit-tooltip {
 			display:block;
 		}
-	.breakdown .missed-term {
-		
+	
+	.unit-unitstr {
+		font-weight:bold;
 	}
 
 /* LOADER */
