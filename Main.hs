@@ -122,8 +122,11 @@ sgns = [-1, 1]
 scale :: Exp -> SI -> SI
 scale n (SI f s) = SI (f ** (realToFrac n)) (M.map (*n) s)
 
-score :: SI -> Exp
-score (SI _ s) = M.foldr ((+) . abs) 0 s
+score :: SI -> (Int, Exp)
+score (SI _ s) = (M.size $ M.filter (/=0) s, M.foldr ((+) . abs) 0 s)
+
+is_unitless :: SI -> Bool
+is_unitless = (==0) . fst . score
 
 -- TODO String -> ByteString
 -- TODO regex-ish stuff (mostly just limiting to alphanum, no regex actually required)
@@ -163,7 +166,7 @@ solve ph = do
       
       ks :: SI -> Maybe [(Sign, UType)] -- brute-force knapsack problem BFS with heuristic
       ks si0 =
-        fmap snd $ listToMaybe $ filter ((==0) . score . fst)
+        fmap snd $ listToMaybe $ filter (is_unitless . fst)
         $ M.toList $ mconcat
         $ take kS_ITER_LIM
         $ iterate (
@@ -172,7 +175,6 @@ solve ph = do
                 . (ks' *** (flip (:)))
               ) . M.toList
           ) (M.fromList [(si0, [])]) where
-            sc0_lim = (3 * score si0) `shift` 1
             ks' :: SI -> Map SI (Sign, UType)
             ks' si = 
               let rscs = [
@@ -181,7 +183,7 @@ solve ph = do
                       , sgn <- sgns
                     ]
                   lsc = score si
-              in M.fromList $ filter ((uncurry (&&) . ((<=lsc) &&& (<sc0_lim))) . score . fst) rscs -- (\x -> trace (show (si_syms si, map (M.toList . si_syms . ut_si . snd . snd) x)) x )
+              in M.fromList $ filter ((<=lsc) . score . fst) rscs -- (\x -> trace (show (si_syms si, map (M.toList . si_syms . ut_si . snd . snd) x)) x )
       
       proc :: C.ByteString -> Maybe [ResultPiece]
       proc s0 = listToMaybe $ dp 0 where
@@ -192,21 +194,22 @@ solve ph = do
           | n >= (fromIntegral $ C.length s0) = []
           | otherwise = -- p_ -> flag for: should include prefixes?
             let s = C.drop (fromIntegral n) s0
-                get :: Bool -> Trie a -> [(DP, a)]
-                get b t = map (\(pre, a, _post) -> (dp (n + CS.length pre), a)) (Tr.matches t (C.toStrict s))
-                us = get True units
-                pus = concatMap (\(r0s:rz, pf) -> 
-                        (
-                            map (\r0 -> r0 {
+                get :: Trie a -> [(DP, a)]
+                get t = map (\(pre, a, _post) -> (dp (n + CS.length pre), a)) (Tr.matches t (C.toStrict s))
+                us = get units
+                pus = concatMap (\(rs, pf) -> 
+                          map (\(r0:rn) -> r0 {
+                              rpc_rng = first (const n) (rpc_rng r0),
                               rpc_m_prefix = Just pf,
                               rpc_stash = (rpc_stash r0) {
                                 si_fac = (10.0 ** (fromIntegral $ p_fac pf)) * (si_fac $ rpc_stash r0)
                               }
-                            })
-                            $ filter (isNothing . rpc_m_prefix) r0s
-                          ) : rz)
+                            } : rn)
+                          $ filter ((==(n+1)) . fst . rpc_rng . head)
+                          $ filter (isNothing . rpc_m_prefix . head) rs
+                        )
                       $ filter (not . null . fst)
-                      $ get False prefixes -- only succeed if non-empty is right -- rpc_m_prefix = Just a -- (Tr.matches prefixes s)
+                      $ get prefixes -- only succeed if non-empty is right -- rpc_m_prefix = Just a -- (Tr.matches prefixes s)
                 us' = [ RPc {
                       rpc_rng = (n, n + (length $ u_sym u) - 1), -- inclusive range, to avoid later lookup failure in ph_map
                       rpc_sgn = sgn,
@@ -218,21 +221,21 @@ solve ph = do
                     , rs <- rss `lor` [[]]
                     , sgn <- sgns
                   ]
-                resultn = snd $ foldr (\rs z@(s, l) ->
-                    let s0 = (-(length rs), score (rpc_stash $ head rs))
-                        z0 = (Just s0, [rs])
-                    in case s of
+                resultn = snd $ foldr (\rs z@(sc, l) ->
+                    let sc0 = (sum $ map (uncurry (-) . rpc_rng) rs, score (rpc_stash $ head rs))
+                        z0 = (Just sc0, [rs])
+                    in case sc of
                       Nothing -> z0
-                      Just s' -> case compare s0 s' of
+                      Just sc' -> case compare sc0 sc' of
                         LT -> z0
-                        EQ -> (Just s', rs : l)
+                        EQ -> (Just sc', rs : l)
                         GT -> z
                   ) (Nothing, []) (us' <> pus)
               -- (flip const (n, s, us, pus, us', s0)) $ 
               in resultn `lor` (dp (n + 1)) -- keep going even if it's empty
       ph_ascii = map toLower $ C.unpack $ convertFuzzy Discard "UTF-8" "ASCII" (BLU.fromString ph)
       (ph_alpha_only, ph_map) = unzip $ filter (uncurry (&&) . ((>= 'A') &&& (<= 'z')) . fst) (zip ph_ascii [0..])
-      m_terms = const (proc (C.pack ph_alpha_only)) (ph_ascii, ph)
+      m_terms = proc (C.pack ph_alpha_only)
       finalize terms = R {
           nice = ks (rpc_stash $ head terms),
           term_raw = ph,
@@ -251,7 +254,7 @@ solve_ep = do
 
 main :: IO ()
 main = do
-  -- s <- solve "this phrase is"
+  -- s <- solve "usgal"
   -- putStrLn $ show s
   putStrLn "Listening..."
   simpleHTTP nullConf $ do

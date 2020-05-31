@@ -144,7 +144,8 @@ export default class extends React.Component {
 									   	: { '-1': '/', '1': j > 0 ? <span>&middot;</span> : '' }[t.rpc_sgn]}
 										{this.state.breakdown_type === 'raw'
 											? term_raw.substring(t.rpc_rng[0], t.rpc_rng[1] + 1)
-											: t.rpc_unit.u_sym}
+											: <span>{t.rpc_m_prefix == null ? null : t.rpc_m_prefix.p_sym}{t.rpc_unit.u_sym}</span>
+										}
 									</a>
 									<span className="hit-tooltip">
 										<div className="hit-tooltip-wrapper">
@@ -155,8 +156,7 @@ export default class extends React.Component {
 														? null
 														: <a href={`//en.wikipedia.org/wiki/${t.rpc_m_prefix.p_name}`} className="unit-prefix" target="_blank">
 															{t.rpc_m_prefix.p_name}
-															&nbsp;
-															(10<sup>{t.rpc_m_prefix.p_fac}</sup>)
+															(10<sup>{t.rpc_m_prefix.p_fac}</sup>)&nbsp;
 														</a>
 													}
 													<a href={`//en.wikipedia.org/wiki/${t.rpc_unit.u_link}`} className="unit-name" target="_blank">
@@ -165,7 +165,7 @@ export default class extends React.Component {
 													<span className="unit-abbr">&nbsp; (abbr. <span className="unit-abbr-prefix">{t.rpc_m_prefix ? t.rpc_m_prefix.p_sym : null}</span>{t.rpc_unit.u_sym})</span>
 												</li>
 												<li key="desc0" className="unit-desc">SI:&nbsp;<span className="unit-unitstr">{this.pprunit(t.rpc_unit.u_si.si_syms)}</span></li>
-												<li key="desc1" className="unit-desc">Phrase unit up to here:&nbsp;<span className="unit-unitstr">{this.pprunit(t.rpc_stash.si_syms)}</span></li>
+												<li key="desc1" className="unit-desc">Phrase unit from here to end:&nbsp;<span className="unit-unitstr">{this.pprunit(t.rpc_stash.si_syms)}</span></li>
 											</ul>
 										</div>
 									</span>
@@ -193,10 +193,12 @@ export default class extends React.Component {
 				</p>
 				<p>
 					The engine is written in Haskell and is made up of two parts:
-					<ol>
-						<li>A dynamic-programming algorithm that finds the unit that bridges the current string position to a later one with the smallest resulting SI unit, and</li>
-						<li>A heuristic <a href="//en.wikipedia.org/wiki/Knapsack_problem">knapsack-problem solver</a> to convert the final SI unit back to a more familiar worded form (e.g. m/s &rarr; speed).</li>
-					</ol>
+				</p>
+				<ol>
+					<li>A dynamic-programming algorithm that finds the unit that bridges the current string position to a later one with the smallest resulting SI unit, and</li>
+					<li>A heuristic <a href="//en.wikipedia.org/wiki/Knapsack_problem">knapsack-problem solver</a> to convert the final SI unit back to a more familiar worded form (e.g. m/s &rarr; speed).</li>
+				</ol>
+				<p>
 					Since the DP and knapsack solvers aren't optimal, the results are not always strictly minimal, but they're usually pretty good and small.
 				</p>
 				<p>
