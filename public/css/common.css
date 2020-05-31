@@ -6,6 +6,11 @@ body, html {
 	background-color:white;
 	font-family:Merriweather, sans-serif;
 }
+.group:after {
+  content: "";
+  display: table;
+  clear: both;
+}
 #main_nav {
 	padding:0 3em;
 	padding-top:1em;

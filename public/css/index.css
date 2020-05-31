@@ -69,9 +69,19 @@ ul.unit-list, #breakdown_selector {
 	font-style:italic;
 }
 
-#about {
+#error, #about {
 	max-width:40em;
 }
+#error {
+	margin:1em 3em;
+}
+	#error > span {
+		background-color:#f7e9ea;
+		color:#702227;
+		font-family:Inconsolata, monospace;
+		padding:1em;
+		display:inline-block;
+	}
 #results, #results_placeholder, #breakdown {
 	padding-left:2em;
 }

@@ -15,34 +15,53 @@ export default class extends React.Component {
 			request: null,
 			err: null
 		};
+		window.addEventListener('popstate', this.handle_uri_term);
 	}
 	
 	componentDidMount() {
 		this.term_raw_ref.current.focus();
+		this.handle_uri_term();
 	}
-	
+	handle_uri_term = () => {
+		const term_raw = (new URLSearchParams(window.location.search)).get('term_raw');
+		if(term_raw != null) {
+			this.setState(s => ({ term_raw, n_request: s.n_request + 1 }));
+		}
+	}
 	componentDidUpdate(_, l) {
+		if(this.state.err !== null && !this.state.err[1]) {
+			const this_err = this.state.err[0];
+			this.setState(({ err }) => err !== null && (err[0] === this_err ? { err: [this_err, true] } : {}));
+			setTimeout(_ => this.setState(({ err }) => err !== null && (err[0] === this_err ? { err: null } : {})), 4000);
+		}
+		
 		if(l.n_request != this.state.n_request) {
 			const n_request_stash = this.state.n_request
 			const term_raw = this.state.term_raw;
 			const fail = e => {
 				console.log(e);
-				this.setState(s => (n_request_stash === s.n_request) && { n_fulfilled: n_request_stash });
+				this.setState(s => (n_request_stash === s.n_request) && { err: [e.message, false], n_fulfilled: n_request_stash });
 			}
-			const P = fetch(`/end/q`, { method: 'POST', body: new FormData(this.form_ref.current) })
-				.then((res) => {
-					if(res.ok)
-						return res.json();
-					else
-						return res.text().then(t => {
-							throw new Error(t);
-						});
-				})
-				.then(res => {
-					// debugger;
-					this.setState(s => (n_request_stash === s.n_request) && { result: res, n_fulfilled: n_request_stash })
-				})
-				.catch(fail);
+			if(term_raw.trim().length > 0)
+				fetch(`/end/q`, { method: 'POST', body: new FormData(this.form_ref.current) })
+					.then((res) => {
+						if(res.ok)  
+							return res.text().then(t => {
+								if(t.trim() === 'nothing')
+									throw new Error('Could not find any units in phrase.');
+								else return JSON.parse(t)
+							});
+						else
+							return res.text().then(t => {
+								throw new Error(t);
+							});
+					})
+					.then(res => {
+						// debugger;
+						this.setState(s => (n_request_stash === s.n_request) && { result: res, n_fulfilled: n_request_stash })
+					})
+					.catch(fail);
+			else fail(new Error('Enter a non-empty phrase.'))
 		}
 	}
 	
@@ -51,6 +70,7 @@ export default class extends React.Component {
 	onChangeBreakdownType = e => this.setState({ breakdown_type: e.target.value });
 	
 	onSubmit = e => {
+		history.pushState({}, `search`, `?term_raw=${encodeURI(this.state.term_raw)}`);
 		this.setState(({ n_request }) => ({ n_request: n_request + 1 }));
 		e.preventDefault();
 	}
@@ -156,9 +176,10 @@ export default class extends React.Component {
 														? null
 														: <a href={`//en.wikipedia.org/wiki/${t.rpc_m_prefix.p_name}`} className="unit-prefix" target="_blank">
 															{t.rpc_m_prefix.p_name}
-															(10<sup>{t.rpc_m_prefix.p_fac}</sup>)&nbsp;
+															(10<sup>{t.rpc_m_prefix.p_fac}</sup>)
 														</a>
 													}
+													<span>&nbsp;</span>
 													<a href={`//en.wikipedia.org/wiki/${t.rpc_unit.u_link}`} className="unit-name" target="_blank">
 														{t.rpc_unit.u_name}
 													</a>
@@ -186,6 +207,13 @@ export default class extends React.Component {
 					}</ul>
 				</section>
 			}
+			{
+				this.state.err == null
+					? null
+					: <section id="error" className="group">
+						<span>Error: {this.state.err[0]}</span>
+					</section>
+			}
 			<section id="about">
 				<h2>About</h2>
 				<p>
@@ -199,7 +227,7 @@ export default class extends React.Component {
 					<li>A heuristic <a href="//en.wikipedia.org/wiki/Knapsack_problem">knapsack-problem solver</a> to convert the final SI unit back to a more familiar worded form (e.g. m/s &rarr; speed).</li>
 				</ol>
 				<p>
-					Since the DP and knapsack solvers aren't optimal, the results are not always strictly minimal, but they're usually pretty good and small.
+					Since the DP and knapsack solvers aren't optimal, the results aren't always strictly minimal, but they're usually pretty good and small.
 				</p>
 				<p>
 					Source is available <a href="//github.com/acrylic-origami/phrase2unit">on GitHub</a>. Further details on implementation can be found <a href="//lam.io/writing/p2u">on my blag.</a>
