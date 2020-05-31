@@ -44,7 +44,7 @@ if __name__ == '__main__':
 				# direct convert to SI -- base case
 				name = d['_name1'] if '_name1' in d else d['name1'] if 'name1' in d else None
 				link = d['link'] if 'link' in d else name if name != None else d['utype']
-				return [float(d['scale']), copy.deepcopy(U[d['utype']]), d['utype'], name, link]
+				return [float(d['scale']), copy.deepcopy([u['ut_si']['si_syms'] for u in U if u['ut_name'] == d['utype']][0]), d['utype'], name, link]
 				
 			if 'target' in d:
 				# direct alias

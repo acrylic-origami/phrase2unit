@@ -1,4 +1,9 @@
 {
+  "repository": "https://github.com/acrylic-origami/phrase2unit",
+  "license": "BSD3",
+  "scripts": {
+    "postinstall": "npx webpack"
+  },
   "devDependencies": {
     "@babel/core": "^7.3.3",
     "@babel/plugin-proposal-class-properties": "^7.3.3",

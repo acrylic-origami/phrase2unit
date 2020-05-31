@@ -19,8 +19,16 @@ extra-source-files:  CHANGELOG.md
 
 executable phrase2unit
   main-is:             Main.hs
-  other-modules:       P2U.Util
+  other-modules:       P2U.Util, P2U.Lang, P2U.Config
   -- other-extensions:
-  build-depends:       base, containers, bytestring-trie, bytestring, aeson, text, happstack-server >= 7.6.0, iconv, utf8-string
-  -- hs-source-dirs:
+  build-depends:       base >= 4.12.0
+                     , aeson >= 1.5.1
+                     , bytestring >= 0.10.10
+                     , bytestring-trie >= 0.2.5
+                     , containers >= 0.6.2
+                     , happstack-server >= 7.6.0
+                     , iconv >= 0.4.1
+                     , text >= 1.2.4
+                     , utf8-string >= 1.0.1
+  hs-source-dirs:      hs-src
   default-language:    Haskell2010

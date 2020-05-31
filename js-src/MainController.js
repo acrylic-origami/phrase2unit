@@ -75,21 +75,14 @@ export default class extends React.Component {
 		e.preventDefault();
 	}
 	
-	pprunit = u => <span className="unit-list">
-			{
-				(() => {
-					const units = Object.entries(u);
-					units.sort((a, b) => a[1] < b[1]);
-					const terms = units.map(([name, power], idx) => 
-						<span key={idx}>{power < 0 ? '/' : (idx > 0 && (<span>&middot;</span>))}{name}<sup>{Math.abs(power) > 1 && Math.abs(power)}</sup></span>
-					);
-					if(terms.length === 0)
-						return ' <unitless>';
-					else
-						return terms;
-				})()
-			}
-		</span>
+	pprunit = u => {
+		const units = Object.entries(u);
+		units.sort((a, b) => a[1] < b[1]);
+		const terms = units.map(([name, power], idx) => 
+			<span key={idx}>{power < 0 ? '/' : (idx > 0 && (<span>&middot;</span>))}{name}<sup>{Math.abs(power) > 1 && Math.abs(power)}</sup></span>
+		);
+		return <span className="unit-list">{terms.length === 0 ? ' <unitless>' : terms}</span>;
+	}
 		
 	// term_mouse = (e, i) => {
 	// 	const e_type = e.type; // grr event pooling
@@ -124,14 +117,17 @@ export default class extends React.Component {
 						{this.state.result.nice == null || this.state.result.nice.length === 0
 							? null
 							: <span>
-								AKA it is a[n]:&nbsp;{ this.pprunit(this.state.result.nice.reduce((a, [b_sgn, b_ut]) => {
+								AKA it is a[n]: {
+									this.pprunit(this.state.result.nice.reduce((a, [b_sgn, b_ut]) => {
 										const k = b_ut.ut_name;
 										if(!a.hasOwnProperty(k))
 											a[k] = 0;
 										a[k] += b_sgn;
 										return a;
-									}, {}))}
-							</span>}
+									}, {}))
+								}
+							</span>
+						}
 					</div>
 				</section>
 			}

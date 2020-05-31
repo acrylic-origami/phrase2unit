@@ -1,14 +1,13 @@
-{-# LANGUAGE DeriveGeneric, OverloadedStrings, GeneralizedNewtypeDeriving #-} -- DeriveFunctor, 
+{-# LANGUAGE OverloadedStrings #-}
 import P2U.Util ( lor, both )
+import P2U.Lang
+import P2U.Config
 
--- import Data.Set ( Set(..) )
--- import qualified Data.Set as Set
 import Data.Map.Lazy ( Map(..) )
 import qualified Data.Map.Lazy as M
 import Data.Trie ( Trie(..) )
 import qualified Data.Trie as Tr
 import Data.ByteString.Lazy ( ByteString(..) )
--- import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy.Char8 as C
 import qualified Data.ByteString.Lazy as W
 import qualified Data.ByteString.Char8 as CS
@@ -32,90 +31,6 @@ import qualified Happstack.Server as HS
 
 import Debug.Trace ( trace )
 
-type Exp = Int
--- data SIPiece = SIP {
---   name :: String,
---   exp :: Exp
--- }
-type Symbol = String
-data SI = SI {
-  si_fac :: Double,
-  si_syms :: Map Symbol Exp -- originally [SIPiece]
-} deriving (Generic, Show)
-
-instance Eq SI where
-  (SI _ a) == (SI _ b) = a == b
-
-instance Ord SI where
-  (SI _ a) `compare` (SI _ b) = a `compare` b
-
-instance Semigroup SI where
-  (SI lf ls) <> (SI rf rs) = SI (lf * rf) (M.filter (/=0) $ M.unionWith (+) ls rs)
-  
-instance Monoid SI where
-  mempty = SI 1.0 mempty
-  mappend = (<>)
-    
-data Unit = U {
-  u_sym :: Symbol,
-  u_name :: String,
-  u_link :: String,
-  u_ut_name :: String,
-  u_si :: SI
-} deriving (Generic, Show)
-
-data UType = UT {
-  ut_name :: String,
-  ut_si :: SI
-} deriving (Generic, Show)
-
-instance FromJSON SI
-instance FromJSON Unit
-instance FromJSON UType
-
--- data Sign = Mul | Div deriving (Show, Enum)
-
-data ResultPiece = RPc {
-  rpc_rng :: (Int, Int), -- start position needed because of skipping, for representation later
-  rpc_sgn :: Exp, -- Sign
-  rpc_m_prefix :: Maybe Prefix,
-  rpc_unit :: Unit,
-  rpc_stash :: SI
-} deriving (Generic, Show)
-
-data Result = R {
-  nice :: Maybe [(Sign, UType)],
-  term_raw :: String,
-  terms :: [ResultPiece]
-} deriving (Generic, Show)
-
-instance ToMessage Result where
-  toContentType _ = "application/json"
-  toMessage = Aeson.encode
-
-type DP = [[ResultPiece]] -- originally `data DP = DP [Stash] (Maybe DP)`
-data Prefix = P {
-  p_sym :: Symbol,
-  p_name :: String,
-  p_fac :: Int
-} deriving (Generic, Show)
-
-instance FromJSON Prefix
-
-instance ToJSON SI where
-  toEncoding = genericToEncoding defaultOptions
-instance ToJSON Unit where
-  toEncoding = genericToEncoding defaultOptions
-instance ToJSON UType where
-  toEncoding = genericToEncoding defaultOptions
-instance ToJSON ResultPiece where
-  toEncoding = genericToEncoding defaultOptions
-instance ToJSON Result where
-  toEncoding = genericToEncoding defaultOptions
-instance ToJSON Prefix where
-  toEncoding = genericToEncoding defaultOptions
-
-type Sign = Exp
 sgns :: [Sign]
 sgns = [-1, 1]
 
@@ -128,28 +43,8 @@ score (SI _ s) = (M.size $ M.filter (/=0) s, M.foldr ((+) . abs) 0 s)
 is_unitless :: SI -> Bool
 is_unitless = (==0) . fst . score
 
--- TODO String -> ByteString
--- TODO regex-ish stuff (mostly just limiting to alphanum, no regex actually required)
-
--- proc :: ByteString -> [Stash]
--- proc s0 = head $ dp True 0 where
-  
---     in snd $ foldr (\rs z@(s, l) ->
---         let s0 = score (rpc_stash $ head rs)
---             z0 = (Just s0, [rs])
---         in case s of
---           Nothing -> z0
---           Just s' -> case compare s0 s' of
---             LT -> z0
---             EQ -> (Just s', rs : l)
---             GT -> z
---       ) (Nothing, []) (us' <> pus)
-    -- trie should take care of strings too short by excluding from `matches`: isn't possible to go too far if check only for empty string
-
 json_load :: FromJSON a => String -> IO (Maybe a)
 json_load = fmap (Aeson.decode . BLU.fromString) . readFile
-
-kS_ITER_LIM = 8
 
 solve :: String -> IO (Maybe Result)
 solve ph = do
@@ -244,8 +139,7 @@ solve ph = do
             }) terms
         }
   return (finalize <$> m_terms)
-
-mAX_TERM_LEN = 256
+  
 solve_ep :: ServerPart Response
 solve_ep = do
     method POST
