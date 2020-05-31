@@ -128,8 +128,9 @@ solve ph = do
                         EQ -> (Just sc', rs : l)
                         GT -> z
                   ) (Nothing, []) (us' <> pus)
+                filt_resultn = map snd $ M.toList $ M.fromList (map ((rpc_stash . head &&& id)) resultn)
               -- (flip const (n, s, us, pus, us', s0)) $ 
-              in resultn `lor` (dp (n + 1)) -- keep going even if it's empty
+              in filt_resultn `lor` (dp (n + 1)) -- keep going even if it's empty
       ph_ascii = map toLower $ C.unpack $ convertFuzzy Transliterate "UTF-8" "ASCII" (BLU.fromString ph)
       (ph_alpha_only, ph_map) = unzip $ filter (uncurry (&&) . ((>= 'A') &&& (<= 'z')) . fst) (zip ph_ascii [0..])
       m_terms = proc (C.pack ph_alpha_only)
@@ -159,8 +160,6 @@ solve_ep = do
 
 main :: IO ()
 main = do
-  -- s <- solve "ee"
-  -- putStrLn $ show s
   putStrLn "Listening..."
   simpleHTTP nullConf $ do
     decodeBody (defaultBodyPolicy "/tmp" 0 65536 65536)
