@@ -17,7 +17,7 @@ The engine is written in Haskell and is made up of two parts:
 
 Since the DP and knapsack solvers aren't optimal, the results aren't always strictly minimal, but they're usually pretty good and small.
 
-Further details on implementation can be found [on my blog](//lam.io/writing/p2u).
+Further details on implementation can be found [on my blog](//lam.io/projects/p2u).
 
 ## Installation
 

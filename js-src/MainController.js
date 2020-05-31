@@ -62,6 +62,7 @@ export default class extends React.Component {
 	handle_uri_term = () => {
 		const term_raw = (new URLSearchParams(window.location.search)).get('term_raw');
 		if(term_raw != null) {
+			this.term_raw_ref.current.value = term_raw;
 			this.setState(s => ({ term_raw, n_request: s.n_request + 1 }));
 		}
 	}
@@ -76,7 +77,7 @@ export default class extends React.Component {
 		
 		if(l.n_request != this.state.n_request) {
 			const n_request_stash = this.state.n_request
-			const term_raw = this.state.term_raw;
+			const term_raw = this.term_raw_ref.current.value;
 			const fail = e => {
 				console.log(e);
 				this.setState(s => (n_request_stash === s.n_request) && { err: [e.message, false], n_fulfilled: n_request_stash });
@@ -109,7 +110,7 @@ export default class extends React.Component {
 	onChangeBreakdownType = e => this.setState({ breakdown_type: e.target.value });
 	
 	onSubmit = e => {
-		history.pushState({}, `search`, `?term_raw=${encodeURI(this.state.term_raw)}`);
+		history.pushState({}, `search`, `?term_raw=${encodeURI(this.term_raw_ref.current.value)}`);
 		this.setState(({ n_request }) => ({ n_request: n_request + 1 }));
 		e.preventDefault();
 	}
@@ -143,11 +144,71 @@ export default class extends React.Component {
 	// 	});
 	// }
 	
+	render_breakdown = (t0, compare = null) => {
+		const term_raw = this.state.result.term_raw;
+		const ret = []; // // //
+		let last_end = 0;
+		let i = 0;
+		const missed_jsx = (a, b) => <li className="missed-term" key={`${i}m`}>{term_raw.substring(a, b)}</li>;
+		const hit_jsx = (t, j, diff = null) =>
+			<li className={`hit-term ${diff ? 'diff' : null}`}
+			    key={`${i}h`}>
+				<span className="hit-unit-wrapper">
+				   {this.state.breakdown_type === 'raw'
+				   	? null
+				   	: { '-1': '/', '1': j > 0 ? <span>&middot;</span> : '' }[t.rpc_sgn]}
+					{this.state.breakdown_type === 'raw'
+						? term_raw.substring(t.rpc_rng[0], t.rpc_rng[1] + 1)
+						: <span>{t.rpc_m_prefix == null ? null : t.rpc_m_prefix.p_sym}{t.rpc_unit.u_sym}</span>
+					}
+				</span>
+				<span className="hit-tooltip">
+					<div className="hit-tooltip-wrapper">
+						<ul>
+							<li key="head" className="unit-head">
+								{ t.rpc_sgn === -1 ? <span className="unit-per">per-</span> : '' }
+								{ t.rpc_m_prefix == null
+									? null
+									: <a href={`//en.wikipedia.org/wiki/${t.rpc_m_prefix.p_name}`} className="unit-prefix" target="_blank">
+										{t.rpc_m_prefix.p_name}
+										(10<sup>{t.rpc_m_prefix.p_fac}</sup>)
+									</a>
+								}
+								<span>&nbsp;</span>
+								<a href={`//en.wikipedia.org/wiki/${t.rpc_unit.u_link}`} className="unit-name" target="_blank">
+									{t.rpc_unit.u_name}
+								</a>
+								<span className="unit-abbr">&nbsp; (abbr. <span className="unit-abbr-prefix">{t.rpc_m_prefix ? t.rpc_m_prefix.p_sym : null}</span>{t.rpc_unit.u_sym})</span>
+							</li>
+							<li key="desc0" className="unit-desc">SI:&nbsp;<span className="unit-unitstr">{t.rpc_unit.u_si.si_fac.toExponential(2)}{this.pprunit(t.rpc_unit.u_si.si_syms)}</span></li>
+							<li key="desc1" className="unit-desc">Phrase unit from here to end:&nbsp;<span className="unit-unitstr">{this.pprunit(t.rpc_stash.si_syms)}</span></li>
+						</ul>
+					</div>
+				</span>
+			</li>;
+		for(const term of t0) {
+			if(this.state.breakdown_type === 'raw')
+				ret.push(missed_jsx(last_end, term.rpc_rng[0]));
+			
+			let diff = false;
+			if(compare) {
+				diff = compare.filter(term_ => term_.rpc_rng[0] === term.rpc_rng[0] && term_.rpc_rng[1] === term.rpc_rng[1]).length === 0;
+			}
+			ret.push(hit_jsx(term, i, diff));
+			last_end = term.rpc_rng[1] + 1;
+			i++;
+		}
+		if(this.state.breakdown_type === 'raw')
+			ret.push(missed_jsx(last_end, term_raw.length));
+		
+		return ret;
+	}
+	
 	render = () =>
 		<div>
 			<section>
 				<form onSubmit={this.onSubmit} id="term_form" ref={this.form_ref}>
-					<input type="text" placeholder="Enter a phrase (e.g. mbmbam, Planck yeast)" value={this.state.term_raw} onChange={this.onTermChange} id="term_raw" name="term_raw" ref={this.term_raw_ref} />
+					<input type="text" placeholder="Enter a phrase (e.g. mbmbam, Planck yeast)" id="term_raw" name="term_raw" ref={this.term_raw_ref} />
 					{ (this.state.n_request > this.state.n_fulfilled) && <div className="lds-ellipsis"><div></div><div></div><div></div><div></div></div> }
 					<input type="submit" />
 				</form>
@@ -166,8 +227,8 @@ export default class extends React.Component {
 					</section>
 			}
 			{
-				this.state.result == null ? null : <section id="results">
-					<h2>This phrase is: <span>{this.state.result.terms[0].rpc_stash.si_fac.toExponential(4)}</span> {this.pprunit(this.state.result.terms[0].rpc_stash.si_syms)}</h2>
+				this.state.result == null || this.state.result.terms[0].length === 0 ? null : <section id="results">
+					<h2>This phrase is: <span>{this.state.result.terms[0][0].rpc_stash.si_fac.toExponential(4)}</span> {this.pprunit(this.state.result.terms[0][0].rpc_stash.si_syms)}</h2>
 					{this.state.result.nice == null || this.state.result.nice.length === 0
 						? null
 						: (() => {
@@ -184,9 +245,9 @@ export default class extends React.Component {
 										&& Math.abs(nice_unit_arr[0][1]) === 1
 										&& nice_unit_arr[0][0] in superlatives
 										&&
-											(this.state.result.terms[0].rpc_stash.si_fac > SUPERLATIVE_LIMS[1]
-											|| this.state.result.terms[0].rpc_stash.si_fac < SUPERLATIVE_LIMS[0])
-									? <div>That's&hellip; {superlatives[nice_unit_arr[0][0]][+(sgn(SUPERLATIVE_LIMS[0] - this.state.result.terms[0].rpc_stash.si_fac) === nice_unit_arr[0][1])]}.</div>
+											(this.state.result.terms[0][0].rpc_stash.si_fac > SUPERLATIVE_LIMS[1]
+											|| this.state.result.terms[0][0].rpc_stash.si_fac < SUPERLATIVE_LIMS[0])
+									? <div>That's&hellip; {superlatives[nice_unit_arr[0][0]][+(sgn(SUPERLATIVE_LIMS[0] - this.state.result.terms[0][0].rpc_stash.si_fac) === nice_unit_arr[0][1])]}.</div>
 									: null }
 								<div>(It's a unit of { this.pprunit(nice_unit) })</div>
 							</div>
@@ -201,7 +262,7 @@ export default class extends React.Component {
 					</span>
 				</section>
 			}
-			{ this.state.result == null ? null :
+			{ this.state.result == null || this.state.result.terms[0].length === 0 ? null :
 				<section id="breakdown">
 					<h2>Breakdown:</h2>
 					<div id='breakdown_control'>
@@ -214,65 +275,24 @@ export default class extends React.Component {
 							</li>
 						</ul>
 					</div>
-					<ul id="breakdown_container">{
-						(() => {
-							const term_raw = this.state.result.term_raw;
-							const ret = []; // // //
-							let last_end = 0;
-							let i = 0;
-							const missed_jsx = (a, b) => <li className="missed-term" key={`${i}m`}>{term_raw.substring(a, b)}</li>;
-							const hit_jsx = (t, j) =>
-								<li className="hit-term"
-								    key={`${i}h`}>
-									<a href={`//en.wikipedia.org/wiki/${t.rpc_unit.u_link}`} className="plain" target="_blank">
-									   {this.state.breakdown_type === 'raw'
-									   	? null
-									   	: { '-1': '/', '1': j > 0 ? <span>&middot;</span> : '' }[t.rpc_sgn]}
-										{this.state.breakdown_type === 'raw'
-											? term_raw.substring(t.rpc_rng[0], t.rpc_rng[1] + 1)
-											: <span>{t.rpc_m_prefix == null ? null : t.rpc_m_prefix.p_sym}{t.rpc_unit.u_sym}</span>
-										}
-									</a>
-									<span className="hit-tooltip">
-										<div className="hit-tooltip-wrapper">
-											<ul>
-												<li key="head" className="unit-head">
-													{ t.rpc_sgn === -1 ? <span className="unit-per">per-</span> : '' }
-													{ t.rpc_m_prefix == null
-														? null
-														: <a href={`//en.wikipedia.org/wiki/${t.rpc_m_prefix.p_name}`} className="unit-prefix" target="_blank">
-															{t.rpc_m_prefix.p_name}
-															(10<sup>{t.rpc_m_prefix.p_fac}</sup>)
-														</a>
-													}
-													<span>&nbsp;</span>
-													<a href={`//en.wikipedia.org/wiki/${t.rpc_unit.u_link}`} className="unit-name" target="_blank">
-														{t.rpc_unit.u_name}
-													</a>
-													<span className="unit-abbr">&nbsp; (abbr. <span className="unit-abbr-prefix">{t.rpc_m_prefix ? t.rpc_m_prefix.p_sym : null}</span>{t.rpc_unit.u_sym})</span>
-												</li>
-												<li key="desc0" className="unit-desc">SI:&nbsp;<span className="unit-unitstr">{t.rpc_unit.u_si.si_fac.toExponential(2)}{this.pprunit(t.rpc_unit.u_si.si_syms)}</span></li>
-												<li key="desc1" className="unit-desc">Phrase unit from here to end:&nbsp;<span className="unit-unitstr">{this.pprunit(t.rpc_stash.si_syms)}</span></li>
-											</ul>
-										</div>
-									</span>
-								</li>;
-							if(this.state.result.terms != null) {
-								for(const term of this.state.result.terms) {
-									if(this.state.breakdown_type === 'raw')
-										ret.push(missed_jsx(last_end, term.rpc_rng[0]));
-									
-									ret.push(hit_jsx(term, i));
-									last_end = term.rpc_rng[1] + 1;
-									i++;
-								}
-							}
-							if(this.state.breakdown_type === 'raw')
-								ret.push(missed_jsx(last_end, term_raw.length));
-							
-							return ret;
-						})()
-					}</ul>
+					<ul className="breakdown-container">{this.render_breakdown(this.state.result.terms[0])}</ul>
+					{
+						this.state.result.terms.length <= 1
+							? null
+							: <div id="alternative_container">
+								<h3>Alternatives:</h3>
+								<ul id="alternative_list">
+									{this.state.result.terms.map((t, idx) => 
+										idx === 0
+											? null
+											: <li key={idx}>
+												<span className="unit-unitstr">{t[0].rpc_stash.si_fac.toExponential(2)}{this.pprunit(t[0].rpc_stash.si_syms)}</span>
+												<ul className="breakdown-container">{this.render_breakdown(t, this.state.result.terms[0])}</ul>
+											</li>
+									)}
+								</ul>
+							</div>
+					}
 				</section>
 			}
 			

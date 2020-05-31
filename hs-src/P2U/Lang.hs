@@ -62,7 +62,7 @@ data ResultPiece = RPc {
 data Result = R {
   nice :: Maybe [(Sign, UType)],
   term_raw :: String,
-  terms :: [ResultPiece]
+  terms :: [[ResultPiece]]
 } deriving (Generic, Show)
 
 instance ToMessage Result where

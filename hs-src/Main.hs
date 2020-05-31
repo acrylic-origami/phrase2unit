@@ -48,7 +48,7 @@ is_unitless = (==0) . fst . score
 json_load :: FromJSON a => String -> IO (Maybe a)
 json_load = fmap (Aeson.decode . BLU.fromString) . readFile
 
-solve :: String -> IO (Maybe Result)
+solve :: String -> IO Result
 solve ph = do
   Just raw_units <- json_load "hs-data/u2si.json"
   Just raw_pfs <- json_load "hs-data/prefixes.json"
@@ -82,8 +82,8 @@ solve ph = do
                   lsc = score si
               in M.fromList $ filter ((<=lsc) . score . fst) rscs -- (\x -> trace (show (si_syms si, map (M.toList . si_syms . ut_si . snd . snd) x)) x )
       
-      proc :: C.ByteString -> Maybe [ResultPiece]
-      proc s0 = listToMaybe $ dp 0 where
+      proc :: C.ByteString -> DP
+      proc s0 = dp 0 where
         dp :: Int -> DP
         dp = (map dp' [0..] !!)
         dp' :: Int -> DP -- dp' must be over int instead of string because we need `start`
@@ -123,7 +123,7 @@ solve ph = do
                         z0 = (Just sc0, [rs])
                     in case sc of
                       Nothing -> z0
-                      Just sc' -> case compare sc0 sc' of
+                      Just sc' -> case compare sc0 sc' of -- trace (show (sc0, sc', head rs, head $ head l)) $ 
                         LT -> z0
                         EQ -> (Just sc', rs : l)
                         GT -> z
@@ -133,14 +133,16 @@ solve ph = do
       ph_ascii = map toLower $ C.unpack $ convertFuzzy Transliterate "UTF-8" "ASCII" (BLU.fromString ph)
       (ph_alpha_only, ph_map) = unzip $ filter (uncurry (&&) . ((>= 'A') &&& (<= 'z')) . fst) (zip ph_ascii [0..])
       m_terms = proc (C.pack ph_alpha_only)
+      finalize :: DP -> Result
       finalize terms = R {
-          nice = ks (rpc_stash $ head terms),
+          nice = ks =<< (rpc_stash . head <$> listToMaybe terms),
           term_raw = ph,
-          terms = map (\rpc -> rpc {
+          terms = (map . map) (\rpc -> rpc {
               rpc_rng = both (ph_map !!) $ rpc_rng rpc
-            }) terms
+            }) -- realign their ranges to the original string
+            $ map (terms!!) [0,(ceiling $ (fromIntegral $ length terms) / (fromIntegral tERM_SAMPLING))..(length terms - 1)] -- sample terms
         }
-  return (finalize <$> m_terms)
+  return (finalize m_terms)
   
 solve_ep :: ServerPart Response
 solve_ep = do
@@ -157,7 +159,7 @@ solve_ep = do
 
 main :: IO ()
 main = do
-  -- s <- solve "usgal"
+  -- s <- solve "ee"
   -- putStrLn $ show s
   putStrLn "Listening..."
   simpleHTTP nullConf $ do
