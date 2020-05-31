@@ -34,7 +34,7 @@ import qualified Happstack.Server as HS
 import Debug.Trace ( trace )
 
 sgns :: [Sign]
-sgns = [-1, 1]
+sgns = [1, -1]
 
 scale :: Exp -> SI -> SI
 scale n (SI f s) = SI (f ** (realToFrac n)) (M.map (*n) s)
@@ -99,7 +99,7 @@ solve ph = do
                               rpc_rng = first (const n) (rpc_rng r0),
                               rpc_m_prefix = Just pf,
                               rpc_stash = (rpc_stash r0) {
-                                si_fac = (10.0 ** (fromIntegral $ p_fac pf)) * (si_fac $ rpc_stash r0)
+                                si_fac = (10.0 ** (fromIntegral $ p_fac pf * rpc_sgn r0)) * (si_fac $ rpc_stash r0)
                               }
                             } : rn)
                           $ filter ((==(n+1)) . fst . rpc_rng . head)
@@ -119,7 +119,7 @@ solve ph = do
                     , sgn <- sgns
                   ]
                 resultn = snd $ foldr (\rs z@(sc, l) ->
-                    let sc0 = (sum $ map (uncurry (-) . rpc_rng) rs, score (rpc_stash $ head rs))
+                    let sc0 = (sum $ map ((`subtract` 1) . uncurry (-) . rpc_rng) rs, score (rpc_stash $ head rs)) -- need to add 1 to the separation to account for -1 offset of end, i.e. account for # of terms
                         z0 = (Just sc0, [rs])
                     in case sc of
                       Nothing -> z0
