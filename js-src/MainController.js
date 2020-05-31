@@ -99,7 +99,7 @@ export default class extends React.Component {
 		<div>
 			<section>
 				<form onSubmit={this.onSubmit} id="term_form" ref={this.form_ref}>
-					<input type="text" placeholder="Enter a phrase (e.g. mbmbam, <a haiku>)" value={this.state.term_raw} onChange={this.onTermChange} id="term_raw" name="term_raw" ref={this.term_raw_ref} />
+					<input type="text" placeholder="Enter a phrase (e.g. mbmbam, Planck yeast)" value={this.state.term_raw} onChange={this.onTermChange} id="term_raw" name="term_raw" ref={this.term_raw_ref} />
 					{ (this.state.n_request > this.state.n_fulfilled) && <div className="lds-ellipsis"><div></div><div></div><div></div><div></div></div> }
 					<input type="submit" />
 				</form>
@@ -111,14 +111,20 @@ export default class extends React.Component {
 				</section>
 			}
 			{
+				this.state.err == null
+					? null
+					: <section id="error" className="group">
+						<span>Error: {this.state.err[0]}</span>
+					</section>
+			}
+			{
 				this.state.result == null ? null : <section id="results">
 					<h2>This phrase is: <span>{this.state.result.terms[0].rpc_stash.si_fac.toExponential(4)}</span> {this.pprunit(this.state.result.terms[0].rpc_stash.si_syms)}</h2>
 					<div>
 						{this.state.result.nice == null || this.state.result.nice.length === 0
 							? null
 							: <span>
-								AKA it is a[n]: {
-									this.pprunit(this.state.result.nice.reduce((a, [b_sgn, b_ut]) => {
+								AKA a[n]:&nbsp;{ this.pprunit(this.state.result.nice.reduce((a, [b_sgn, b_ut]) => {
 										const k = b_ut.ut_name;
 										if(!a.hasOwnProperty(k))
 											a[k] = 0;
@@ -181,7 +187,7 @@ export default class extends React.Component {
 													</a>
 													<span className="unit-abbr">&nbsp; (abbr. <span className="unit-abbr-prefix">{t.rpc_m_prefix ? t.rpc_m_prefix.p_sym : null}</span>{t.rpc_unit.u_sym})</span>
 												</li>
-												<li key="desc0" className="unit-desc">SI:&nbsp;<span className="unit-unitstr">{this.pprunit(t.rpc_unit.u_si.si_syms)}</span></li>
+												<li key="desc0" className="unit-desc">SI:&nbsp;<span className="unit-unitstr">{t.rpc_stash.si_fac.toExponential(2)}{this.pprunit(t.rpc_unit.u_si.si_syms)}</span></li>
 												<li key="desc1" className="unit-desc">Phrase unit from here to end:&nbsp;<span className="unit-unitstr">{this.pprunit(t.rpc_stash.si_syms)}</span></li>
 											</ul>
 										</div>
@@ -197,19 +203,13 @@ export default class extends React.Component {
 									i++;
 								}
 							}
-							ret.push(term_raw.substring(last_end, term_raw.length));
+							ret.push(missed_jsx(last_end, term_raw.length));
 							return ret;
 						})()
 					}</ul>
 				</section>
 			}
-			{
-				this.state.err == null
-					? null
-					: <section id="error" className="group">
-						<span>Error: {this.state.err[0]}</span>
-					</section>
-			}
+			
 			<section id="about">
 				<h2>About</h2>
 				<p>
@@ -219,16 +219,16 @@ export default class extends React.Component {
 					The engine is written in Haskell and is made up of two parts:
 				</p>
 				<ol>
-					<li>A dynamic-programming algorithm that finds the unit that bridges the current string position to a later one with the smallest resulting SI unit, and</li>
-					<li>A heuristic <a href="//en.wikipedia.org/wiki/Knapsack_problem">knapsack-problem solver</a> to convert the final SI unit back to a more familiar worded form (e.g. m/s &rarr; speed).</li>
+					<li>A dynamic-programming algorithm finds the unit that bridges the current string position to a later one with the smallest resulting SI unit, and</li>
+					<li>A heuristic <a href="//en.wikipedia.org/wiki/Knapsack_problem">knapsack-problem solver</a> converts the final SI unit back to a more familiar worded form (e.g. m/s &rarr; speed).</li>
 				</ol>
 				<p>
 					Since the DP and knapsack solvers aren't optimal, the results aren't always strictly minimal, but they're usually pretty good and small.
 				</p>
 				<p>
-					Source is available <a href="//github.com/acrylic-origami/phrase2unit">on GitHub</a>. Further details on implementation can be found <a href="//lam.io/writing/p2u">on my blag.</a>
+					Source is available <a href="//github.com/acrylic-origami/phrase2unit" target="_blank">on GitHub</a>. Further details on implementation can be found <a href="//lam.io/writing/p2u" target="_blank">on my blag.</a>
 				</p>
-				<p><sup>&dagger; Just realized this sentence reads like this tool complies with a standard created by XKCD. <a href="https://xkcd.com/927/" target="_blank">Oh god.</a></sup></p>
+				<p><sup>&dagger; Just realized this sentence reads like this tool complies with a standard created by XKCD &mdash; one of more than 2000. <a href="https://xkcd.com/927/" target="_blank">Oh god.</a></sup></p>
 			</section>
 		</div>
 }

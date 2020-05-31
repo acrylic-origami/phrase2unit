@@ -42,7 +42,7 @@ This is a Python-Haskell-React project. Yes, it's time to get funky with package
 	
 		I added these by hand to `wikiunits.json`.
 		
-		`prep/convert.py` converts the data to one the Haskell engine can use via `cd prep; python convert.py wikiunits.json utypes.json > ../hs-src/u2si.json`.
-	3. There is a minified list of `utype`s called `hs-src/lim_utypes` for use by the knapsack solver that removes redundant options (like `volume per area` vs. `length`) and unitless utypes (like `gradient`) to help it solve faster.
+		`prep/convert.py` converts the data to one the Haskell engine can use via `cd prep; python convert.py wikiunits.json utypes.json > ../hs-data/u2si.json`.
+	3. There is a minified list of `utype`s called `hs-data/lim_utypes` for use by the knapsack solver that removes redundant options (like `volume per area` vs. `length`) and unitless utypes (like `gradient`) to help it solve faster.
 
 The Wikipedia data is also not the most complete. Notably it's missing candela, and to my eye it's also sparse on electrical units (like Volt, Farad, Henry, etc.). I'm looking for better datasets (see #1) that should improve the quality of the solver's results.

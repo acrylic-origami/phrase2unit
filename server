@@ -1,4 +1,3 @@
 #!/usr/bin/env bash
-export FLASK_ENV="development"
-export FLASK_APP="solve.py"
-python -m flask run
+# nohup ./dist-newstyle/build/x86_64-linux/ghc-8.8.3/phrase2unit-0.1.0.0/x/phrase2unit/build/phrase2unit/phrase2unit >server.log 2>&1 &
+nohup cabal run >> server.log 2>&1 &
