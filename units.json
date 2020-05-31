@@ -23,6 +23,7 @@
 	"gradient": {},
 	"length": {"m":1},
 	"linear density": {"kg":1, "m":-1},
+	"luminous intensity": {"cd":1},
 	"magnetic field strength": {"A":1, "m":-1},
 	"magnetizing field": {"A":1, "m":-1},
 	"mass": {"kg":1},

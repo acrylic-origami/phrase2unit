@@ -22,5 +22,6 @@
 "kN": { "utype": "force", "scale": "1E3" },
 
 "kJ": { "utype": "energy", "scale": "1E3" },
-"MJ": { "utype": "energy", "scale": "1E6" }
+"MJ": { "utype": "energy", "scale": "1E6" },
+"cd": { "utype": "luminous intensity", "scale": "1" }
 }

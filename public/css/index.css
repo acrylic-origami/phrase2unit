@@ -1,6 +1,9 @@
 a {
 	color:#3dbadb;
 }
+label {
+	cursor:pointer;
+}
 kbd {
 	border:#AAA solid 1px;
 	border-bottom:#AAA solid 3px;

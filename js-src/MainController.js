@@ -189,7 +189,7 @@ export default class extends React.Component {
 			<section id="about">
 				<h2>About</h2>
 				<p>
-					This tool interprets phrases as if they were a sequence of units, slicing the phrase into unit symbols that cancel out into the smallest unit that covers the most of the phrase. It thereby implements <a href="//xkcd.com/2312" target="_blank">XKCD 2312</a>&dagger;. The engine inserts <a href="//physics.nist.gov/cuu/Units/prefixes.html" target="_blank">SI prefixes</a> where they make the resulting unit smaller. It uses units symbols, common names, and conversions to SI <a href="//en.wikipedia.org/wiki/Module:Convert/documentation/conversion_data">provided by Wikipedia</a>, specifically <a href="//en.wikipedia.org/wiki/Module:Convert/data">this Lua table</a> that is generated from that page.
+					This tool interprets phrases as if they were a sequence of units, slicing the phrase into unit symbols that cancel out into the smallest unit that covers the most of the phrase. It thereby implements <a href="//xkcd.com/2312" target="_blank">XKCD 2312</a>&dagger;. The engine inserts <a href="//physics.nist.gov/cuu/Units/prefixes.html" target="_blank">SI prefixes</a> where they make the resulting unit smaller. It uses unit symbols, common names, and conversions to SI <a href="//en.wikipedia.org/wiki/Module:Convert/documentation/conversion_data">provided by Wikipedia</a>, specifically <a href="//en.wikipedia.org/wiki/Module:Convert/data">this Lua table</a> that is generated from that page.
 				</p>
 				<p>
 					The engine is written in Haskell and is made up of two parts:
@@ -200,7 +200,7 @@ export default class extends React.Component {
 					Since the DP and knapsack solvers aren't optimal, the results are not always strictly minimal, but they're usually pretty good and small.
 				</p>
 				<p>
-					Source is available <a href="">on GitHub</a>. Further details on implementation can be found <a href="//lam.io/writing/p2u">on my blag.</a>
+					Source is available <a href="//github.com/acrylic-origami/phrase2unit">on GitHub</a>. Further details on implementation can be found <a href="//lam.io/writing/p2u">on my blag.</a>
 				</p>
 				<p><sup>&dagger; Just realized this sentence reads like this tool complies with a standard created by XKCD. <a href="https://xkcd.com/927/" target="_blank">Oh god.</a></sup></p>
 			</section>

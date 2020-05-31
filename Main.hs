@@ -1,8 +1,10 @@
 {-# LANGUAGE DeriveGeneric, OverloadedStrings, GeneralizedNewtypeDeriving #-} -- DeriveFunctor, 
 import P2U.Util ( lor, both )
 
-import Data.Map.Strict ( Map(..) )
-import qualified Data.Map.Strict as M
+-- import Data.Set ( Set(..) )
+-- import qualified Data.Set as Set
+import Data.Map.Lazy ( Map(..) )
+import qualified Data.Map.Lazy as M
 import Data.Trie ( Trie(..) )
 import qualified Data.Trie as Tr
 import Data.ByteString.Lazy ( ByteString(..) )
@@ -13,11 +15,12 @@ import qualified Data.ByteString.Char8 as CS
 import qualified Data.ByteString as WS
 import qualified Data.ByteString.Lazy.UTF8 as BLU
 import qualified Data.ByteString.UTF8 as BSU
+import Data.Bits ( shift )
 import Data.Char ( toLower )
 import Control.Monad.IO.Class ( liftIO )
 import Control.Applicative ( liftA2 )
 import Control.Arrow ( first, second, (&&&), (***) )
-import Data.Maybe ( fromMaybe, listToMaybe )
+import Data.Maybe ( fromMaybe, listToMaybe, isNothing )
 import GHC.Generics
 import System.Environment (getArgs)
 import Data.Aeson ( ToJSON(..), FromJSON(..), genericToEncoding, defaultOptions )
@@ -39,6 +42,12 @@ data SI = SI {
   si_fac :: Double,
   si_syms :: Map Symbol Exp -- originally [SIPiece]
 } deriving (Generic, Show)
+
+instance Eq SI where
+  (SI _ a) == (SI _ b) = a == b
+
+instance Ord SI where
+  (SI _ a) `compare` (SI _ b) = a `compare` b
 
 instance Semigroup SI where
   (SI lf ls) <> (SI rf rs) = SI (lf * rf) (M.filter (/=0) $ M.unionWith (+) ls rs)
@@ -75,7 +84,7 @@ data ResultPiece = RPc {
 } deriving (Generic, Show)
 
 data Result = R {
-  nice :: [(Sign, UType)],
+  nice :: Maybe [(Sign, UType)],
   term_raw :: String,
   terms :: [ResultPiece]
 } deriving (Generic, Show)
@@ -137,6 +146,8 @@ score (SI _ s) = M.foldr ((+) . abs) 0 s
 json_load :: FromJSON a => String -> IO (Maybe a)
 json_load = fmap (Aeson.decode . BLU.fromString) . readFile
 
+kS_ITER_LIM = 8
+
 solve :: String -> IO (Maybe Result)
 solve ph = do
   Just raw_units <- json_load "u2si.json"
@@ -150,16 +161,19 @@ solve ph = do
       prefixes :: Trie Prefix
       prefixes = Tr.fromList $ map (CS.pack . map toLower . p_sym &&& id) raw_pfs
       
-      ks :: SI -> [(Sign, UType)] -- brute-force knapsack problem BFS with heuristic
-      ks si =
-        snd $ head $ filter ((==0) . score . fst) $ concat
+      ks :: SI -> Maybe [(Sign, UType)] -- brute-force knapsack problem BFS with heuristic
+      ks si0 =
+        fmap snd $ listToMaybe $ filter ((==0) . score . fst)
+        $ M.toList $ mconcat
+        $ take kS_ITER_LIM
         $ iterate (
-            concatMap (
-                uncurry (flip map)
-                . (ks' *** (second . flip (:)))
-              )
-          ) [(si, [])] where
-            ks' :: SI -> [(SI, (Sign, UType))]
+            (\x -> trace (show $ M.size x) x) . mconcat . map (
+                uncurry (flip M.map)
+                . (ks' *** (flip (:)))
+              ) . M.toList
+          ) (M.fromList [(si0, [])]) where
+            sc0_lim = (3 * score si0) `shift` 1
+            ks' :: SI -> Map SI (Sign, UType)
             ks' si = 
               let rscs = [
                       (scale (-sgn) (ut_si ut) <> si, (sgn, ut)) -- invert because we're _solving_ for units
@@ -167,29 +181,32 @@ solve ph = do
                       , sgn <- sgns
                     ]
                   lsc = score si
-              in filter ((<=(lsc + 1)) . score . fst) rscs
+              in M.fromList $ filter ((uncurry (&&) . ((<=lsc) &&& (<sc0_lim))) . score . fst) rscs -- (\x -> trace (show (si_syms si, map (M.toList . si_syms . ut_si . snd . snd) x)) x )
       
       proc :: C.ByteString -> Maybe [ResultPiece]
-      proc s0 = listToMaybe $ dp True 0 where
-        dp :: Bool -> Int -> DP
-        dp b = (map (dp' b) [0..] !!)
-        dp' :: Bool -> Int -> DP -- dp' must be over int instead of string because we need `start`
-        dp' p_ n
+      proc s0 = listToMaybe $ dp 0 where
+        dp :: Int -> DP
+        dp = (map dp' [0..] !!)
+        dp' :: Int -> DP -- dp' must be over int instead of string because we need `start`
+        dp' n
           | n >= (fromIntegral $ C.length s0) = []
           | otherwise = -- p_ -> flag for: should include prefixes?
             let s = C.drop (fromIntegral n) s0
                 get :: Bool -> Trie a -> [(DP, a)]
-                get b t = map (\(pre, a, _post) -> (dp b (n + CS.length pre), a)) (Tr.matches t (C.toStrict s))
+                get b t = map (\(pre, a, _post) -> (dp (n + CS.length pre), a)) (Tr.matches t (C.toStrict s))
                 us = get True units
-                pus | p_ = concatMap (\(r0s:rz, pf) -> map (\r0 -> r0 {
-                          rpc_m_prefix = Just pf,
-                          rpc_stash = (rpc_stash r0) {
-                            si_fac = (10.0 ** (fromIntegral $ p_fac pf)) * (si_fac $ rpc_stash r0)
-                          }
-                        }) r0s : rz)
+                pus = concatMap (\(r0s:rz, pf) -> 
+                        (
+                            map (\r0 -> r0 {
+                              rpc_m_prefix = Just pf,
+                              rpc_stash = (rpc_stash r0) {
+                                si_fac = (10.0 ** (fromIntegral $ p_fac pf)) * (si_fac $ rpc_stash r0)
+                              }
+                            })
+                            $ filter (isNothing . rpc_m_prefix) r0s
+                          ) : rz)
                       $ filter (not . null . fst)
                       $ get False prefixes -- only succeed if non-empty is right -- rpc_m_prefix = Just a -- (Tr.matches prefixes s)
-                    | otherwise = mempty
                 us' = [ RPc {
                       rpc_rng = (n, n + (length $ u_sym u) - 1), -- inclusive range, to avoid later lookup failure in ph_map
                       rpc_sgn = sgn,
@@ -212,7 +229,7 @@ solve ph = do
                         GT -> z
                   ) (Nothing, []) (us' <> pus)
               -- (flip const (n, s, us, pus, us', s0)) $ 
-              in resultn `lor` (dp p_ (n + 1)) -- keep going even if it's empty
+              in resultn `lor` (dp (n + 1)) -- keep going even if it's empty
       ph_ascii = map toLower $ C.unpack $ convertFuzzy Discard "UTF-8" "ASCII" (BLU.fromString ph)
       (ph_alpha_only, ph_map) = unzip $ filter (uncurry (&&) . ((>= 'A') &&& (<= 'z')) . fst) (zip ph_ascii [0..])
       m_terms = const (proc (C.pack ph_alpha_only)) (ph_ascii, ph)
@@ -234,6 +251,8 @@ solve_ep = do
 
 main :: IO ()
 main = do
+  -- s <- solve "this phrase is"
+  -- putStrLn $ show s
   putStrLn "Listening..."
   simpleHTTP nullConf $ do
     decodeBody (defaultBodyPolicy "/tmp" 0 65536 65536)
