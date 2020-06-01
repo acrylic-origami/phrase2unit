@@ -13,7 +13,6 @@
 {"ut_name": "energy per unit length", "ut_si": {"si_fac": 1.0, "si_syms": {"kg":1,"m":1, "s":-2}}},
 {"ut_name": "energy per unit mass", "ut_si": {"si_fac": 1.0, "si_syms": {"m":2, "s":-2}}},
 {"ut_name": "energy per unit volume", "ut_si": {"si_fac": 1.0, "si_syms": {"kg":1, "s":-2}}},
-{"ut_name": "equivalent radiation dose", "ut_si": {"si_fac": 1.0, "si_syms": {}}},
 {"ut_name": "exhaust emission", "ut_si": {"si_fac": 1.0, "si_syms": {"kg":1, "m":-1}}},
 {"ut_name": "flow", "ut_si": {"si_fac": 1.0, "si_syms": {"m":3, "s":-1}}},
 {"ut_name": "force", "ut_si": {"si_fac": 1.0, "si_syms": {"kg":1,"m":1, "s":-2}}},
