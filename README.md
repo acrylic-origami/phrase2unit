@@ -31,7 +31,7 @@ This is a Python-Haskell-React project. Yes, it's time to get funky with package
   cabal build
   ```
 
-2. This repo contains the data I used at the time of creation, so it's possible to run the server directly with `cabal run`, where it starts listening on port 5000 by [HappStack's] default.
+2. This repo contains the data I used at the time of creation, so it's possible to run the server directly with `cabal run`, where it starts listening on port 8000 by [HappStack's] default.
 3. However, if you want to update the data from Wikipedia and/or tweak the conversion:
 	1. `prep/dat.lua` is the extracted set of Lua unit tables at [Wikipedia's Module:Convert/data](https://en.wikipedia.org/wiki/Module:Convert/data), with `all_units` exposed. `prep/convert.lua` just uses a tweaked version of [RXI's json.lua](https://github.com/rxi/json.lua) to ignore the weird mixed tables and yank the data into JSON like `cd prep; lua convert.lua > wikiunits.json`
 	2. This data contains aliases of unit symbols that need to be flattened (e.g. `U.S.gal` -> `USgal`) and ratios whose constituent units need to be resolved (e.g. `L/100 km`). Further, some symbols that are referenced but not specified because they are prefixed. These include:
