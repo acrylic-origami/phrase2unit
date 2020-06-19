@@ -1,5 +1,6 @@
 import React from 'react';
 import Q from 'q';
+import { removeDiacritics } from './diacritics.js'
 
 const SUPERLATIVE_LIMS = [1E-9, 1E9];
 const superlatives = {
@@ -35,6 +36,8 @@ const superlatives = {
 	"volume":["pretty big","pretty small"]
 }
 function sgn(x) { return x > 0 ? 1 : -1; }
+
+window.__phrase2unit_solve = null;
 
 export default class extends React.Component {
 	constructor(props) {
@@ -77,31 +80,36 @@ export default class extends React.Component {
 		
 		if(l.n_request != this.state.n_request) {
 			const n_request_stash = this.state.n_request
-			const term_raw = this.term_raw_ref.current.value;
+			const term = this.term_raw_ref.current.value
+				.trim()
+				.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 			const fail = e => {
 				console.log(e);
 				this.setState(s => (n_request_stash === s.n_request) && { err: [e.message, false], n_fulfilled: n_request_stash });
 			}
-			if(term_raw.trim().length > 0)
-				fetch(`/end/q`, { method: 'POST', body: new FormData(this.form_ref.current) })
-					.then((res) => {
-						if(res.ok)  
-							return res.text().then(t => {
-								if(t.trim() === 'nothing')
-									throw new Error('Could not find any units in phrase.');
-								else return JSON.parse(t)
-							});
-						else
-							return res.text().then(t => {
-								throw new Error(t);
-							});
-					})
-					.then(res => {
-						// debugger;
-						this.setState(s => (n_request_stash === s.n_request) && { result: res, n_fulfilled: n_request_stash })
-					})
-					.catch(fail);
-			else fail(new Error('Enter a non-empty phrase.'))
+			if(term.length > 0 && __phrase2unit_solve != null) {
+				__phrase2unit_solve(term)
+					.then(r => console.log(r) || this.setState(s => (n_request_stash === s.n_request) && { result: r, n_fulfilled: n_request_stash }));
+				// fetch(`/end/q`, { method: 'POST', body: new FormData(this.form_ref.current) })
+				// 	.then((res) => {
+				// 		if(res.ok)  
+				// 			return res.text().then(t => {
+				// 				if(t.trim() === 'nothing')
+				// 					throw new Error('Could not find any units in phrase.');
+				// 				else return JSON.parse(t)
+				// 			});
+				// 		else
+				// 			return res.text().then(t => {
+				// 				throw new Error(t);
+				// 			});
+				// 	})
+				// 	.then(res => {
+				// 		// debugger;
+				// 		this.setState(s => (n_request_stash === s.n_request) && { result: res, n_fulfilled: n_request_stash })
+				// 	})
+				// 	.catch(fail);
+			}
+			// else fail(new Error('Enter a non-empty phrase.'))
 		}
 	}
 	
@@ -262,7 +270,7 @@ export default class extends React.Component {
 					</span>
 				</section>
 			}
-			{ this.state.result == null || this.state.result.terms[0].length === 0 ? null :
+			{ this.state.result == null || this.state.result.terms.length === 0 ? null :
 				<section id="breakdown">
 					<h2>Breakdown:</h2>
 					<div id='breakdown_control'>

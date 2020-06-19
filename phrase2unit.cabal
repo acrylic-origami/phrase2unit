@@ -11,7 +11,7 @@ version:             0.1.0.0
 -- license:
 license-file:        LICENSE
 author:              Derek Lam
-maintainer:          dc.lam@mail.utoronto.ca
+maintainer:          derek@lam.io
 -- copyright:
 -- category:
 build-type:          Simple
@@ -22,14 +22,13 @@ executable phrase2unit
   other-modules:       P2U.Util, P2U.Lang, P2U.Config
   -- other-extensions:
   build-depends:       base >= 4.12.0
-                     , aeson >= 1.5.1
+                     , aeson
+                     , asterius-prelude
                      , bytestring >= 0.10.10
                      , bytestring-trie >= 0.2.5
                      , containers >= 0.6.2
                      , happstack-server >= 7.6.0
                      , iconv >= 0.4.1
-                     , text >= 1.2.4
-                     , time >= 1.9.0
                      , utf8-string >= 1.0.1
   hs-source-dirs:      hs-src
   default-language:    Haskell2010

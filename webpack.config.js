@@ -7,7 +7,7 @@ module.exports = [
     mode: 'development',
     output: {
       path: path.resolve(__dirname),
-      filename: 'public/js/index.main.react.js'
+      filename: 'public/index.main.react.js'
     },
     devtool: 'none',
     module: {

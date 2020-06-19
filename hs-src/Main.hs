@@ -3,9 +3,10 @@ import P2U.Util ( lor, both )
 import P2U.Lang
 import P2U.Config
 
+import Data.Coerce ( coerce )
 import Data.Map.Lazy ( Map(..) )
 import qualified Data.Map.Lazy as M
-import Data.Trie ( Trie(..) )
+import Data.Trie ( Trie(..), matches )
 import qualified Data.Trie as Tr
 import Data.ByteString.Lazy ( ByteString(..) )
 import qualified Data.ByteString.Lazy.Char8 as C
@@ -16,6 +17,7 @@ import qualified Data.ByteString.Lazy.UTF8 as BLU
 import qualified Data.ByteString.UTF8 as BSU
 import Data.Bits ( shift )
 import Data.Char ( toLower )
+import Control.Monad ( void )
 import Control.Monad.IO.Class ( liftIO )
 import Control.Applicative ( liftA2 )
 import Control.Arrow ( first, second, (&&&), (***) )
@@ -26,15 +28,19 @@ import System.IO ( hFlush, stdout )
 import Data.Aeson ( ToJSON(..), FromJSON(..), genericToEncoding, defaultOptions )
 import qualified Data.Aeson as Aeson ( encode, decode )
 import Codec.Text.IConv ( convertFuzzy, Fuzzy(..) )
-import Data.Time.Clock ( getCurrentTime )
 
-import Happstack.Server ( Response(..), ServerPart(..), Method(..), ToMessage(..), decodeBody, defaultBodyPolicy, dir, look, nullConf, simpleHTTP, method, toResponse, ok, badRequest )
-import qualified Happstack.Server as HS
+import Asterius.Aeson ( jsonToJSVal )
+import Asterius.Types ( JSString(..), JSVal(..), JSFunction(..), fromJSString, toJSString )
 
 import Debug.Trace ( trace )
 
+foreign import javascript safe "fetch($1).then(t => t.text())" fetch :: JSString -> IO JSVal
+-- foreign export javascript "solve_ep" solve_ep :: JSString -> IO JSVal
+foreign import javascript "wrapper" mk_callback :: (JSString -> IO JSVal) -> IO JSFunction
+foreign import javascript unsafe "(window.__phrase2unit_solve = $1) && undefined" global_shove :: JSFunction -> IO ()
+
 sgns :: [Sign]
-sgns = [1, -1]
+sgns = [-1, 1]
 
 scale :: Exp -> SI -> SI
 scale n (SI f s) = SI (f ** (realToFrac n)) (M.map (*n) s)
@@ -46,7 +52,10 @@ is_unitless :: SI -> Bool
 is_unitless = (==0) . fst . score
 
 json_load :: FromJSON a => String -> IO (Maybe a)
-json_load = fmap (Aeson.decode . BLU.fromString) . readFile
+json_load = fmap (Aeson.decode . BLU.fromString . fromJSString . coerce) . fetch . toJSString
+
+solve_ep :: JSString -> IO JSVal
+solve_ep = fmap jsonToJSVal . solve . fromJSString
 
 solve :: String -> IO Result
 solve ph = do
@@ -131,8 +140,7 @@ solve ph = do
                 filt_resultn = map snd $ M.toList $ M.fromList (map ((rpc_stash . head &&& id)) resultn)
               -- (flip const (n, s, us, pus, us', s0)) $ 
               in filt_resultn `lor` (dp (n + 1)) -- keep going even if it's empty
-      ph_ascii = map toLower $ C.unpack $ convertFuzzy Transliterate "UTF-8" "ASCII" (BLU.fromString ph)
-      (ph_alpha_only, ph_map) = unzip $ filter (uncurry (&&) . ((>= 'A') &&& (<= 'z')) . fst) (zip ph_ascii [0..])
+      (ph_alpha_only, ph_map) = unzip $ filter (uncurry (&&) . ((>= 'A') &&& (<= 'z')) . fst) (zip ph [0..])
       m_terms = proc (C.pack ph_alpha_only)
       finalize :: DP -> Result
       finalize terms = R {
@@ -143,24 +151,10 @@ solve ph = do
             }) -- realign their ranges to the original string
             $ map (terms!!) [0,(ceiling $ (fromIntegral $ length terms) / (fromIntegral tERM_SAMPLING))..(length terms - 1)] -- sample terms
         }
+  putStrLn $ show ph
+  putStrLn $ show $ BLU.fromString ph
+  putStrLn $ show ph_alpha_only
   return (finalize m_terms)
-  
-solve_ep :: ServerPart Response
-solve_ep = do
-    method POST
-    ph <- look "term_raw"
-    if length ph > mAX_TERM_LEN
-      then badRequest $ toResponse $ "Phrase too long (>" ++ (show mAX_TERM_LEN) ++ " characters)"
-    else do
-      terms <- liftIO $ do
-        getCurrentTime >>= (putStrLn . (++(" : " ++ ph)) . show)
-        hFlush stdout
-        solve ph
-      ok $ toResponse terms
 
 main :: IO ()
-main = do
-  putStrLn "Listening..."
-  simpleHTTP nullConf $ do
-    decodeBody (defaultBodyPolicy "/tmp" 0 65536 65536)
-    dir "q" solve_ep
+main = global_shove =<< mk_callback solve_ep
