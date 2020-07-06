@@ -58,10 +58,9 @@ json_load = fmap (Aeson.decode . BLU.fromString . fromJSString . coerce) . fetch
 solve_ep :: JSString -> JSVal
 solve_ep = jsonToJSVal . solve . fromJSString
 
-solve :: String -> Result
-solve ph = 
-  let (GS {..}) = gs
-      units :: Trie Unit
+solve :: GlobalState -> String -> Result
+solve (GS {..}) ph = 
+  let units :: Trie Unit
       units = Tr.fromList $ map (CS.pack . map toLower . u_sym &&& id) raw_units
       
       prefixes :: Trie Prefix
@@ -150,14 +149,9 @@ solve ph =
         }
   in (trace $ show (ph, ph_alpha_only)) $ finalize m_terms
 
-gs :: GlobalState
-gs = unsafePerformIO $! do
-  !(Just !raw_units) <- json_load "hs-data/u2si.json"
-  !(Just !raw_pfs) <- json_load "hs-data/prefixes.json"
-  !(Just !utypes) <- json_load "hs-data/lim_utypes.json"
-  return $ GS {
-      raw_units, raw_pfs, utypes
-    }
-
 main :: IO ()
-main = global_shove =<< mk_callback solve_ep
+main = do
+  Just raw_units <- json_load "hs-data/u2si.json"
+  Just raw_pfs <- json_load "hs-data/prefixes.json"
+  Just utypes <- json_load "hs-data/lim_utypes.json"
+  global_shove =<< mk_callback (solve_ep GS { raw_units, raw_pfs, utypes })
