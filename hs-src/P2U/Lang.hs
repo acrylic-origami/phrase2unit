@@ -92,3 +92,9 @@ instance ToJSON Prefix where
   toEncoding = genericToEncoding defaultOptions
 
 type Sign = Exp
+
+data GlobalState = GS {
+  raw_units :: [Unit],
+  raw_pfs :: [Prefix],
+  utypes :: [UType]
+}

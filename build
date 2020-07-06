@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 set -e
 ahc-cabal build
-ahc-dist --browser --bundle --export-function=solve_ep --input-exe bin/phrase2unit --input-mjs public/phrase2unit.mjs --output-directory public/
+ahc-dist --browser --bundle --export-function=solve_ep --input-exe bin/phrase2unit --input-mjs public/phrase2unit.mjs --output-directory public/ --gc-threshold=512

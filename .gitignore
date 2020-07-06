@@ -2,3 +2,7 @@ public/js/index.main.react.js
 node_modules/
 __pycache__/
 env/
+*.hi
+*.o
+*.mjs
+!phrase2unit.mjs

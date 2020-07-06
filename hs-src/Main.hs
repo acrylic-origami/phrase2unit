@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, NamedFieldPuns, RecordWildCards, BangPatterns #-}
 import P2U.Util ( lor, both )
 import P2U.Lang
 import P2U.Config
@@ -17,7 +17,6 @@ import qualified Data.ByteString.Lazy.UTF8 as BLU
 import qualified Data.ByteString.UTF8 as BSU
 import Data.Bits ( shift )
 import Data.Char ( toLower )
-import Control.Monad ( void )
 import Control.Monad.IO.Class ( liftIO )
 import Control.Applicative ( liftA2 )
 import Control.Arrow ( first, second, (&&&), (***) )
@@ -25,6 +24,8 @@ import Data.Maybe ( fromMaybe, listToMaybe, isNothing )
 import GHC.Generics
 import System.Environment (getArgs)
 import System.IO ( hFlush, stdout )
+import System.IO.Unsafe ( unsafePerformIO )
+import Data.IORef ( IORef(..), newIORef, readIORef )
 import Data.Aeson ( ToJSON(..), FromJSON(..), genericToEncoding, defaultOptions )
 import qualified Data.Aeson as Aeson ( encode, decode )
 import Codec.Text.IConv ( convertFuzzy, Fuzzy(..) )
@@ -36,7 +37,7 @@ import Debug.Trace ( trace )
 
 foreign import javascript safe "fetch($1).then(t => t.text())" fetch :: JSString -> IO JSVal
 -- foreign export javascript "solve_ep" solve_ep :: JSString -> IO JSVal
-foreign import javascript "wrapper" mk_callback :: (JSString -> IO JSVal) -> IO JSFunction
+foreign import javascript "wrapper" mk_callback :: (JSString -> JSVal) -> IO JSFunction
 foreign import javascript unsafe "(window.__phrase2unit_solve = $1) && undefined" global_shove :: JSFunction -> IO ()
 
 sgns :: [Sign]
@@ -54,17 +55,13 @@ is_unitless = (==0) . fst . score
 json_load :: FromJSON a => String -> IO (Maybe a)
 json_load = fmap (Aeson.decode . BLU.fromString . fromJSString . coerce) . fetch . toJSString
 
-solve_ep :: JSString -> IO JSVal
-solve_ep = fmap jsonToJSVal . solve . fromJSString
+solve_ep :: JSString -> JSVal
+solve_ep = jsonToJSVal . solve . fromJSString
 
-solve :: String -> IO Result
-solve ph = do
-  Just raw_units <- json_load "hs-data/u2si.json"
-  Just raw_pfs <- json_load "hs-data/prefixes.json"
-  Just utypes <- json_load "hs-data/lim_utypes.json"
-  -- (Just _raw_units, (Just raw_pfs, Just utypes)) <- liftIO $
-  --   liftA2 (,) (return Nothing) (liftA2 (,) (json_load "prefixes.json") (json_load "utypes.json"))
-  let units :: Trie Unit
+solve :: String -> Result
+solve ph = 
+  let (GS {..}) = gs
+      units :: Trie Unit
       units = Tr.fromList $ map (CS.pack . map toLower . u_sym &&& id) raw_units
       
       prefixes :: Trie Prefix
@@ -151,10 +148,16 @@ solve ph = do
             }) -- realign their ranges to the original string
             $ map (terms!!) [0,(ceiling $ (fromIntegral $ length terms) / (fromIntegral tERM_SAMPLING))..(length terms - 1)] -- sample terms
         }
-  putStrLn $ show ph
-  putStrLn $ show $ BLU.fromString ph
-  putStrLn $ show ph_alpha_only
-  return (finalize m_terms)
+  in (trace $ show (ph, ph_alpha_only)) $ finalize m_terms
+
+gs :: GlobalState
+gs = unsafePerformIO $! do
+  !(Just !raw_units) <- json_load "hs-data/u2si.json"
+  !(Just !raw_pfs) <- json_load "hs-data/prefixes.json"
+  !(Just !utypes) <- json_load "hs-data/lim_utypes.json"
+  return $ GS {
+      raw_units, raw_pfs, utypes
+    }
 
 main :: IO ()
 main = global_shove =<< mk_callback solve_ep
